@@ -1,0 +1,9 @@
+no/haakon/demo/SimpleDemo.class
+no/haakon/watcher/Watchmaker.class
+no/haakon/watcher/Watchmaker$1.class
+no/haakon/annotation/WatchClass.class
+no/haakon/watcher/MethodPredicate.class
+no/haakon/model/ProxyEvent$ProxyEventBuilder.class
+no/haakon/demo/ExampleBean.class
+no/haakon/watcher/WatchingProxy.class
+no/haakon/model/ProxyEvent.class
