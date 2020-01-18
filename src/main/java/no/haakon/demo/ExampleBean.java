@@ -2,19 +2,16 @@ package no.haakon.demo;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import no.haakon.annotation.WatchClass;
 
 import java.time.LocalDateTime;
 
 /**
- * Dette er verdens kjedeligste bønne.
- * Se for deg en bruker med en epost, som kan ha abbonert på nyhetsmail eller ikke.
- * Vi skjelver alle i spenning. ^_^ Poenget var bare å ha en enkel og forståelig bønne der et sted.
- * Dette er også slik java ser ut uten lombok. Tenk deg å skrive java, uten å bruke lombok!
+ * This is probably the most boring bean I could think of.
+ * It's realistic in the sense that it knows of creation and update time.
+ * But it's just users who may or may not be on a mailing list.
  */
 @Data
 @NoArgsConstructor
-@WatchClass
 public class ExampleBean {
     private String name;
     private String email;

@@ -2,6 +2,8 @@ package no.haakon.watcher;
 
 import javassist.util.proxy.MethodHandler;
 import javassist.util.proxy.ProxyFactory;
+import no.haakon.annotation.WatchMethod;
+import no.haakon.model.Listener;
 import no.haakon.model.ProxyEvent;
 
 import java.lang.reflect.InvocationTargetException;
@@ -16,8 +18,10 @@ import java.util.function.Consumer;
 public class Watchmaker<T> {
 
     public static final MethodPredicate IS_SETTER = (Object proxy, Object originalt, Method method, Method forwarder, Object[] args) -> method.getName().startsWith("set");
+    public static final MethodPredicate ALWAYS = (Object proxy, Object originalt, Method method, Method forwarder, Object[] args) -> true;
+    public static final MethodPredicate ANNOTATED = (Object proxy, Object originalt, Method method, Method forwarder, Object[] args) -> method.getAnnotation(WatchMethod.class) != null;
 
-    private final Set<Consumer<ProxyEvent<T>>> eventListeners;
+    private final Set<Listener<T>> eventListeners;
     private final MethodPredicate notifyWhenMatching;
 
     private ProxyFactory factory = new ProxyFactory();
@@ -28,13 +32,13 @@ public class Watchmaker<T> {
     // Og det er ganske pent når man skal grafse rundt med Javas refleksjon. Det ser nesten ut som om det skal være sånn... :
     // Hvis du ikke er vant med varargs har Effective Java en del nyttige ting å si om dem. Hint: Ikke bruk dem på primitive variabler.
 
-    public Watchmaker (MethodPredicate notifyWhenMatching, Collection<Consumer<ProxyEvent<T>>> eventlisteners) {
+    public Watchmaker(MethodPredicate notifyWhenMatching, Collection<Listener<T>> eventlisteners) {
         this.eventListeners = new HashSet<>(eventlisteners);
         this.notifyWhenMatching = notifyWhenMatching;
     }
 
     @SafeVarargs
-    public Watchmaker(MethodPredicate notifyWhenMatching, Consumer<ProxyEvent<T>>... eventlisteners) {
+    public Watchmaker(MethodPredicate notifyWhenMatching, Listener<T>... eventlisteners) {
         this(notifyWhenMatching, Arrays.asList(eventlisteners));
     }
 
@@ -43,11 +47,11 @@ public class Watchmaker<T> {
     }
 
     @SafeVarargs
-    public Watchmaker(Consumer<ProxyEvent<T>>... eventlisteners) {
+    public Watchmaker(Listener<T>... eventlisteners) {
         this(IS_SETTER, eventlisteners);
     }
 
-    public Watchmaker(Collection<Consumer<ProxyEvent<T>>> eventlisteners) {
+    public Watchmaker(Collection<Listener<T>> eventlisteners) {
         this(IS_SETTER, eventlisteners);
     }
 
@@ -55,13 +59,18 @@ public class Watchmaker<T> {
         this(IS_SETTER, Collections.emptySet());
     }
 
-    public void subscribeToPropertyChangeEvents(Consumer<ProxyEvent<T>> callbackFunction) {
+    public void subscribeToPropertyChangeEvents(Listener<T> callbackFunction) {
         eventListeners.add(callbackFunction);
+    }
+
+    public static <T> T watch(T objectToWatch, MethodPredicate reportWhenMatches, Listener<T>... listeners) throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        return new Watchmaker<>(reportWhenMatches, listeners).createWatchman(objectToWatch);
     }
 
     // This is where the magic happens. Litt mindre "vil du bli med meg hjem og se på frimerkesamlingen min?", og litt mer
     // "på en skala fra 1-10, hvor mye lukter dette tørklet av kloroform?".
-    @SuppressWarnings("unchecked") // Vi *VET* at dette går greit, fordi proxyen garanterer det i dokken. API-et er dog ikke like medgjørlig.
+    @SuppressWarnings("unchecked")
+    // Vi *VET* at dette går greit, fordi proxyen garanterer det i dokken. API-et er dog ikke like medgjørlig.
     public T createWatchman(T objectToWatch) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
         ProxyFactory pf = new ProxyFactory();
         pf.setSuperclass(objectToWatch.getClass());
@@ -79,12 +88,13 @@ public class Watchmaker<T> {
     private MethodHandler createInvocationHandler(final T objektSomSkalProxes) {
         return new MethodHandler() {
             @Override
-            @SuppressWarnings("unchecked") // Siden object er proxyen, og proxyen garanterer å extende T, og dermed alltid være instanceof T.
+            @SuppressWarnings("unchecked")
+            // Siden object er proxyen, og proxyen garanterer å extende T, og dermed alltid være instanceof T.
             public Object invoke(Object object, Method overridenMethod, Method forwarderMethod, Object[] args) throws Throwable {
-                if(notifyWhenMatching.matches(object, objektSomSkalProxes, overridenMethod, forwarderMethod, args)) {
-                    ProxyEvent<T> event = new ProxyEvent<>((T)object, objektSomSkalProxes, overridenMethod, forwarderMethod, args);
+                if (notifyWhenMatching.matches(object, objektSomSkalProxes, overridenMethod, forwarderMethod, args)) {
+                    ProxyEvent<T> event = new ProxyEvent<>((T) object, objektSomSkalProxes, overridenMethod, forwarderMethod, args);
 
-                    for(Consumer<ProxyEvent<T>> lytter : eventListeners) {
+                    for (Consumer<ProxyEvent<T>> lytter : eventListeners) {
                         lytter.accept(event);
                     }
                 }

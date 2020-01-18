@@ -1,15 +1,14 @@
 package no.haakon.demo;
 
-import no.haakon.model.ProxyEvent;
+import no.haakon.model.Listener;
 import no.haakon.watcher.Watchmaker;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.function.Consumer;
 
 public class SimpleDemo {
     public static void main(String[] args) throws Exception {
-        Consumer<ProxyEvent<ExampleBean>> lytter = (event) -> {
+        Listener<ExampleBean> lytter = (event) -> {
             System.out.printf("Nå endrer bønnen %s seg!%n", event.getOriginalObject());
             event.getOriginalObject().setUpdated(LocalDateTime.now()); // <- Vi kan altså automatisk holde den oppdatert! Neat-o
         };
@@ -17,7 +16,7 @@ public class SimpleDemo {
         // og så vil det jo skje automatisk. Siden dette er bare en liten demonstrasjon av hvordan AOP kan gjøres i Java,
         // så gjør vi ting manuelt her.
         ExampleBean unwatched = new ExampleBean();
-        ExampleBean watched = new Watchmaker<>(lytter).createWatchman(new ExampleBean());
+        ExampleBean watched = Watchmaker.watch(new ExampleBean(), Watchmaker.IS_SETTER, lytter);
 
         unwatched.setName("Unwatched");
         watched.setName("Watched");
